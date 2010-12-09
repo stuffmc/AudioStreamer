@@ -23,9 +23,14 @@
 	IBOutlet UIView *volumeSlider;
 	IBOutlet UILabel *positionLabel;
 	IBOutlet UISlider *progressSlider;
-	AudioStreamer *streamer;
 	NSTimer *progressUpdateTimer;
+	AudioStreamer *streamer;
+	BOOL wasPlaying;
 }
+
+@property (nonatomic, retain) UIView *adView;
+@property (nonatomic, retain) IBOutlet UIView *contentView;
+
 
 - (IBAction)buttonPressed:(id)sender;
 - (void)spinButton;

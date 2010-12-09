@@ -163,6 +163,8 @@ extern NSString * const ASStatusChangedNotification;
 @property (readonly) double duration;
 @property (readwrite) UInt32 bitRate;
 @property (readonly) NSDictionary *httpHeaders;
+@property AudioQueueRef audioQueue;
+
 
 - (id)initWithURL:(NSURL *)aURL;
 - (void)start;

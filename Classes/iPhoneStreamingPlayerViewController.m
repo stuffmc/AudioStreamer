@@ -12,6 +12,10 @@
 //  appreciated but not required.
 //
 
+#define DLog(fmt, ...)		NSLog((@"%s [Line %d] " fmt), __PRETTY_FUNCTION__, __LINE__, ##__VA_ARGS__);
+#define DLogV(var)			NSLog(@"%s [Line %d] " #var ": %@", __PRETTY_FUNCTION__, __LINE__, var)
+
+
 #import "iPhoneStreamingPlayerViewController.h"
 #import "AudioStreamer.h"
 #import <QuartzCore/CoreAnimation.h>
@@ -19,6 +23,98 @@
 #import <CFNetwork/CFNetwork.h>
 
 @implementation iPhoneStreamingPlayerViewController
+
+
+@synthesize adView, contentView;
+
+- (void)pause {
+	if ([streamer isPlaying] || wasPlaying) {
+		wasPlaying = !wasPlaying;
+		if ([streamer isPlaying]) {
+			Float32 currentVolume;
+			AudioQueueGetParameter([streamer audioQueue], kAudioQueueParam_Volume, &currentVolume);
+			//			DLogF(currentVolume);
+			Float32 volume = currentVolume;
+			//			DLogF(volume);
+			for (;volume>=0;volume-=.1) {
+//				DLogF(volume);
+				[NSThread sleepForTimeInterval:.05];
+				AudioQueueSetParameter([streamer audioQueue], kAudioQueueParam_Volume, volume);
+			}
+		}
+		[streamer stop];
+	}
+}
+
+- (IBAction)displayAd {
+	CGRect adFrameBefore = self.adView.frame;
+	if (adFrameBefore.origin.y < 0) {
+		CGRect tableViewFrame = self.contentView.frame;
+		CGRect adFrameAfter = adFrameBefore;
+		adFrameAfter.origin.y += adFrameBefore.size.height + 1;
+		self.adView.frame = adFrameBefore;
+		tableViewFrame.size.height -= adFrameAfter.size.height;
+		tableViewFrame.origin.y = adFrameAfter.size.height;
+		
+		[UIView beginAnimations:nil context:nil];
+		//	self.adView.alpha = 1;
+		self.adView.frame = adFrameAfter;
+		self.contentView.frame = tableViewFrame;
+		[UIView commitAnimations];
+	}
+}
+
+- (IBAction)hideAd {
+	CGRect adFrameBefore = self.adView.frame;
+	if (adFrameBefore.origin.y >= 0) {
+		CGRect tableViewFrame = self.contentView.frame;
+		CGRect adFrameAfter = adFrameBefore;
+		adFrameAfter.origin.y -= adFrameBefore.size.height + 1;
+		self.adView.frame = adFrameBefore;
+		tableViewFrame.size.height += adFrameAfter.size.height;
+		tableViewFrame.origin.y = 0;
+		
+		[UIView beginAnimations:nil context:nil];
+		//	self.adView.alpha = 0;
+		self.adView.frame = adFrameAfter;
+		self.contentView.frame = tableViewFrame;
+		[UIView commitAnimations];
+	}
+}
+
+- (void)bannerViewDidLoadAd:(id)banner {
+	DLog();
+	[self displayAd];
+}
+
+// This method will be invoked when an error has occurred attempting to get advertisement content. 
+// The ADError enum lists the possible error codes.
+- (void)bannerView:(id)banner didFailToReceiveAdWithError:(NSError *)error {
+	DLogV(error);
+	[self hideAd];
+}
+
+// This message will be sent when the user taps on the banner and some action is to be taken.
+// Actions either display full screen content in a modal session or take the user to a different
+// application. The delegate may return NO to block the action from taking place, but this
+// should be avoided if possible because most advertisements pay significantly more when 
+// the action takes place and, over the longer term, repeatedly blocking actions will 
+// decrease the ad inventory available to the application. Applications may wish to pause video, 
+// audio, or other animated content while the advertisement's action executes.
+- (BOOL)bannerViewActionShouldBegin:(id)banner willLeaveApplication:(BOOL)willLeave {
+	DLog();
+	[self pause];
+	return YES;
+}
+
+// This message is sent when a modal action has completed and control is returned to the application. 
+// Games, media playback, and other activities that were paused in response to the beginning
+// of the action should resume at this point.
+- (void)bannerViewActionDidFinish:(id)banner {
+	DLog();
+	[self createStreamer];
+	[streamer start];
+}
 
 //
 // setButtonImage:
@@ -127,6 +223,15 @@
 	[volumeView sizeToFit];
 	
 	[self setButtonImage:[UIImage imageNamed:@"playbutton.png"]];
+	
+	Class ADBannerView = NSClassFromString(@"ADBannerView");
+	if (ADBannerView) {
+		self.adView = [[ADBannerView alloc] initWithFrame:CGRectZero];
+		//	self.adView.alpha = 0;
+		[self.adView setDelegate:self];
+		[self.view addSubview:self.adView];
+		[self hideAd];
+	}	
 }
 
 //

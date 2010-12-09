@@ -213,7 +213,7 @@ void ASReadStreamCallBack
 @synthesize errorCode;
 @synthesize state;
 @synthesize bitRate;
-@synthesize httpHeaders;
+@synthesize httpHeaders, audioQueue;
 
 //
 // initWithURL
